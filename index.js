@@ -9,11 +9,6 @@ app.use(cors());
 app.use(express.json());
 const port = process.env.PORT || 5000;
 
-
-
-
-
-
 app.get("/", (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -39,7 +34,6 @@ body{
 
     <div class="bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-3xl p-10 shadow-2xl">
 
-        <!-- Header -->
         <div class="flex items-start justify-between mb-8">
 
             <div>
@@ -62,8 +56,6 @@ body{
         </div>
 
         <div class="border-t border-gray-800 my-8"></div>
-
-        <!-- Server Info -->
 
         <div class="grid md:grid-cols-4 gap-4 mb-8">
 
@@ -108,8 +100,6 @@ body{
             </div>
 
         </div>
-
-        <!-- Endpoints -->
 
         <h2 class="text-2xl font-bold mb-5">
             Available Endpoints
@@ -157,15 +147,15 @@ body{
                     </p>
                 </div>
 
-                <span class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm">
-                    GET
+                <span class="bg-gradient-to-r from-red-500 to-orange-400 text-black text-semibold px-3 py-1 rounded-lg text-sm">
+                    POST
                 </span>
             </div>
 
             <div class="bg-gray-800/40 hover:bg-gray-800 transition rounded-xl p-4 flex justify-between items-center">
                 <div>
                     <h3 class="font-mono text-red-400">
-                        /classes
+                        <a href="/classes" target="_blank" class="url">/classes</a>
                     </h3>
                     <p class="text-sm text-gray-400">
                         Retrieve all gym classes
@@ -177,9 +167,22 @@ body{
                 </span>
             </div>
 
-        </div>
+            <div class="bg-gray-800/40 hover:bg-gray-800 transition rounded-xl p-4 flex justify-between items-center">
+                <div>
+                    <h3 class="font-mono text-red-400">
+                        <a href="/featured-classes" target="_blank" class="url">/featured-classes</a>
+                    </h3>
+                    <p class="text-sm text-gray-400">
+                        Retrieve all featured gym classes
+                    </p>
+                </div>
 
-        <!-- Footer -->
+                <span class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm">
+                    GET
+                </span>
+            </div>
+
+        </div>
 
         <div class="mt-8 pt-6 border-t border-gray-800 flex justify-between text-sm text-gray-500">
 
@@ -201,9 +204,7 @@ body{
 </html>`);
 });
 
-
 const uri = process.env.MONGODB_URI;
-
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -215,33 +216,70 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-   
     await client.connect();
-   
+    console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
-         const db = client.db("gymetix");
-        const usersCollection = db.collection("users");
+    const db = client.db("gymetix"); 
+    const usersCollection = db.collection("users");
+    const classesCollection = db.collection("classes");
 
-        app.post("/users", async (req, res) => {
-            const user = req.body;
-            const result = await usersCollection.insertOne(user);
-            res.send(result);
-        });
+    // ── User Routes ─────
+    app.post("/user", async (req, res) => {
+      try {
+        const user = req.body;
+        const result = await usersCollection.insertOne(user);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Failed to create user" });
+      }
+    });
 
-        app.get("/users", async (req, res) => {
-            const users = await usersCollection.find().toArray();
-            res.send(users);
-        });
+    app.get("/user", async (req, res) => {
+      try {
+        const users = await usersCollection.find().toArray();
+        res.send(users);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Failed to fetch users" });
+      }
+    });
+
+    // ── All Classes Route ─────
+    app.get("/classes", async (req, res) => {
+      try {
+        const classes = await classesCollection.find().toArray();
+        res.send(classes);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Failed to fetch classes" });
+      }
+    });
+
+    // ── Featured Classes Route (Using optimized find logic) ──
+    app.get("/featured-classes", async (req, res) => {
+      try {
+        const featured = await classesCollection
+          .find()
+          .sort({ rating: -1, booked: -1 })
+          .limit(6)
+          .toArray();
+
+        res.send(featured);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Failed to fetch featured classes" });
+      }
+    });
 
     await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
 
-    // await client.close();
+  } catch (error) {
+    console.error(error);
   }
 }
-run().catch(console.dir);
 
+run().catch(console.dir);
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
