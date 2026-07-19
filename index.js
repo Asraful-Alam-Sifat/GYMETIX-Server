@@ -110,7 +110,7 @@ body{
             <div class="bg-gray-800/40 hover:bg-gray-800 transition rounded-xl p-4 flex justify-between items-center">
                 <div>
                     <h3 class="font-mono text-red-400">
-                        /users
+                        <a href="/user" target="_blank" class="url">/users</a>
                     </h3>
                     <p class="text-sm text-gray-400">
                         Retrieve all registered users
@@ -125,7 +125,7 @@ body{
             <div class="bg-gray-800/40 hover:bg-gray-800 transition rounded-xl p-4 flex justify-between items-center">
                 <div>
                     <h3 class="font-mono text-red-400">
-                        /trainers
+                        <a href="/trainers" target="_blank" class="url">/trainers</a>
                     </h3>
                     <p class="text-sm text-gray-400">
                         Retrieve all approved trainers
@@ -140,7 +140,7 @@ body{
             <div class="bg-gray-800/40 hover:bg-gray-800 transition rounded-xl p-4 flex justify-between items-center">
                 <div>
                     <h3 class="font-mono text-red-400">
-                        /forums
+                        <a href="/forums" target="_blank" class="url">/forums</a>
                     </h3>
                     <p class="text-sm text-gray-400">
                         Retrieve community posts
@@ -211,69 +211,83 @@ const client = new MongoClient(uri, {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  }
+  },
 });
 
-// Database & Collections
-const db = client.db("gymetix");
-const usersCollection = db.collection("users");
-const classesCollection = db.collection("classes");
+let db;
 
-// Connect MongoDB
-async function run() {
-  try {
+// Connect MongoDB only once
+async function connectDB() {
+  if (!db) {
     await client.connect();
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
-
-    await client.db("admin").command({ ping: 1 });
-  } catch (error) {
-    console.error(error);
+    console.log("✅ MongoDB Connected");
+    db = client.db("gymetix");
   }
+  return db;
 }
 
-run().catch(console.dir);
-
-// ========================
 // User Routes
-// ========================
-
 app.post("/user", async (req, res) => {
   try {
-    const user = req.body;
-    const result = await usersCollection.insertOne(user);
+    const db = await connectDB();
+    const usersCollection = db.collection("user");
+
+    const result = await usersCollection.insertOne(req.body);
+
     res.send(result);
   } catch (error) {
     console.error(error);
-    res.status(500).send({ message: "Failed to create user" });
+
+    res.status(500).json({
+      message: error.message,
+      stack: error.stack,
+    });
   }
 });
 
 app.get("/user", async (req, res) => {
   try {
+    const db = await connectDB();
+    const usersCollection = db.collection("user");
+
     const users = await usersCollection.find().toArray();
+
     res.send(users);
   } catch (error) {
     console.error(error);
-    res.status(500).send({ message: "Failed to fetch users" });
+
+    res.status(500).json({
+      message: error.message,
+      stack: error.stack,
+    });
   }
 });
 
-// ========================
 // Classes Routes
-// ========================
-
 app.get("/classes", async (req, res) => {
   try {
+    const db = await connectDB();
+    const classesCollection = db.collection("classes");
+
     const classes = await classesCollection.find().toArray();
+
     res.send(classes);
   } catch (error) {
     console.error(error);
-    res.status(500).send({ message: "Failed to fetch classes" });
+
+    res.status(500).json({
+      message: error.message,
+      stack: error.stack,
+    });
   }
 });
 
+// featured-classes
 app.get("/featured-classes", async (req, res) => {
   try {
+    const db = await connectDB();
+    const classesCollection = db.collection("classes");
+
     const featured = await classesCollection
       .find()
       .sort({ rating: -1, booked: -1 })
@@ -283,24 +297,34 @@ app.get("/featured-classes", async (req, res) => {
     res.send(featured);
   } catch (error) {
     console.error(error);
-    res.status(500).send({ message: "Failed to fetch featured classes" });
+
+    res.status(500).json({
+      message: error.message,
+      stack: error.stack,
+    });
   }
 });
 
-// ========================
-// Test Route
-// ========================
 
-app.get("/test", (req, res) => {
-  res.send("Test route works");
+
+app.get("/trainers", async (req, res) => {
+    try {
+        const db = await connectDB();
+        const usersCollection = db.collection("user");
+        
+        // Find all users where the role is "trainer"
+        const trainers = await usersCollection.find({ role: "trainer" }).toArray();
+        res.send(trainers);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 });
 
-// Only listen if NOT on Vercel
+// Only listen locally
 if (require.main === module) {
   app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`);
+    console.log(`Server running on port ${port}`);
   });
 }
 
-// Export for Vercel
 module.exports = app;
