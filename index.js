@@ -214,83 +214,93 @@ const client = new MongoClient(uri, {
   }
 });
 
+// Database & Collections
+const db = client.db("gymetix");
+const usersCollection = db.collection("users");
+const classesCollection = db.collection("classes");
+
+// Connect MongoDB
 async function run() {
   try {
     await client.connect();
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
-    const db = client.db("gymetix"); 
-    const usersCollection = db.collection("users");
-    const classesCollection = db.collection("classes");
-
-    // ── User Routes ─────
-    app.post("/user", async (req, res) => {
-      try {
-        const user = req.body;
-        const result = await usersCollection.insertOne(user);
-        res.send(result);
-      } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Failed to create user" });
-      }
-    });
-
-    app.get("/user", async (req, res) => {
-      try {
-        const users = await usersCollection.find().toArray();
-        res.send(users);
-      } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Failed to fetch users" });
-      }
-    });
-
-    // ── All Classes Route ─────
-    app.get("/classes", async (req, res) => {
-      try {
-        const classes = await classesCollection.find().toArray();
-        res.send(classes);
-      } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Failed to fetch classes" });
-      }
-    });
-
-    // ── Featured Classes Route (Using optimized find logic) ──
-    app.get("/featured-classes", async (req, res) => {
-      try {
-        const featured = await classesCollection
-          .find()
-          .sort({ rating: -1, booked: -1 })
-          .limit(6)
-          .toArray();
-
-        res.send(featured);
-      } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Failed to fetch featured classes" });
-      }
-    });
-
     await client.db("admin").command({ ping: 1 });
-
   } catch (error) {
     console.error(error);
   }
 }
 
+run().catch(console.dir);
+
+// ========================
+// User Routes
+// ========================
+
+app.post("/user", async (req, res) => {
+  try {
+    const user = req.body;
+    const result = await usersCollection.insertOne(user);
+    res.send(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Failed to create user" });
+  }
+});
+
+app.get("/user", async (req, res) => {
+  try {
+    const users = await usersCollection.find().toArray();
+    res.send(users);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Failed to fetch users" });
+  }
+});
+
+// ========================
+// Classes Routes
+// ========================
+
+app.get("/classes", async (req, res) => {
+  try {
+    const classes = await classesCollection.find().toArray();
+    res.send(classes);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Failed to fetch classes" });
+  }
+});
+
+app.get("/featured-classes", async (req, res) => {
+  try {
+    const featured = await classesCollection
+      .find()
+      .sort({ rating: -1, booked: -1 })
+      .limit(6)
+      .toArray();
+
+    res.send(featured);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Failed to fetch featured classes" });
+  }
+});
+
+// ========================
+// Test Route
+// ========================
+
 app.get("/test", (req, res) => {
   res.send("Test route works");
 });
 
-run().catch(console.dir);
-
-// Only listen if we are NOT in the Vercel environment
+// Only listen if NOT on Vercel
 if (require.main === module) {
   app.listen(port, () => {
     console.log(`Example app listening on port ${port}`);
   });
 }
 
-// Always export for Vercel
+// Export for Vercel
 module.exports = app;
