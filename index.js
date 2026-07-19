@@ -281,6 +281,12 @@ async function run() {
 
 run().catch(console.dir);
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
-});
+// Only listen if we are NOT in the Vercel environment
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Example app listening on port ${port}`);
+  });
+}
+
+// Always export for Vercel
+module.exports = app;
