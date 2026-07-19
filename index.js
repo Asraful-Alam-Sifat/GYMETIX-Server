@@ -279,6 +279,10 @@ async function run() {
   }
 }
 
+app.get("/test", (req, res) => {
+  res.send("Test route works");
+});
+
 run().catch(console.dir);
 
 // Only listen if we are NOT in the Vercel environment
