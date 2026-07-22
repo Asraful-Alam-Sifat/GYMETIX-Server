@@ -2,7 +2,8 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const dotenv = require("dotenv");
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+
 
 dotenv.config();
 app.use(cors());
@@ -269,15 +270,20 @@ app.get("/classes", async (req, res) => {
     const db = await connectDB();
     const classesCollection = db.collection("classes");
 
-    const { search, category } = req.query;
+    const { search, category, status } = req.query;
     let query = {};
 
-   
+    
+    if (status) {
+      query.status = status;
+    }
+
+    // Filter by search term
     if (search) {
       query.title = { $regex: search, $options: "i" };
     }
 
-    
+    // Filter by category
     if (category && category !== "all") {
       const categoriesArray = Array.isArray(category) ? category : [category];
       query.category = { $in: categoriesArray };
@@ -285,6 +291,35 @@ app.get("/classes", async (req, res) => {
 
     const classes = await classesCollection.find(query).toArray();
     res.send(classes);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: error.message,
+      stack: error.stack,
+    });
+  }
+});
+
+// GET a single class by ID
+app.get("/classes/:id", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const classesCollection = db.collection("classes");
+
+    const id = req.params.id;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid class ID format" });
+    }
+
+    const query = { _id: new ObjectId(id) };
+    const classItem = await classesCollection.findOne(query);
+
+    if (!classItem) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    res.send(classItem);
   } catch (error) {
     console.error(error);
     res.status(500).json({
