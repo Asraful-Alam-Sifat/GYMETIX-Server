@@ -269,12 +269,24 @@ app.get("/classes", async (req, res) => {
     const db = await connectDB();
     const classesCollection = db.collection("classes");
 
-    const classes = await classesCollection.find().toArray();
+    const { search, category } = req.query;
+    let query = {};
 
+   
+    if (search) {
+      query.title = { $regex: search, $options: "i" };
+    }
+
+    
+    if (category && category !== "all") {
+      const categoriesArray = Array.isArray(category) ? category : [category];
+      query.category = { $in: categoriesArray };
+    }
+
+    const classes = await classesCollection.find(query).toArray();
     res.send(classes);
   } catch (error) {
     console.error(error);
-
     res.status(500).json({
       message: error.message,
       stack: error.stack,
@@ -306,13 +318,13 @@ app.get("/featured-classes", async (req, res) => {
 });
 
 
-
+    // trainers Routes
 app.get("/trainers", async (req, res) => {
     try {
         const db = await connectDB();
         const usersCollection = db.collection("user");
         
-        // Find all users where the role is "trainer"
+       
         const trainers = await usersCollection.find({ role: "trainer" }).toArray();
         res.send(trainers);
     } catch (error) {
