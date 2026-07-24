@@ -4,7 +4,6 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
-
 dotenv.config();
 app.use(cors());
 app.use(express.json());
@@ -17,190 +16,73 @@ app.get("/", (req, res) => {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gymetix API Server</title>
-
 <script src="https://cdn.tailwindcss.com"></script>
-
 <style>
-body{
-    background:
-    radial-gradient(circle at top,#111827 0%,#030712 50%);
-}
+body{ background: radial-gradient(circle at top,#111827 0%,#030712 50%); }
 </style>
-
 </head>
-
 <body class="min-h-screen flex items-center justify-center text-white px-4">
-
 <div class="w-full max-w-4xl">
-
     <div class="bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-3xl p-10 shadow-2xl">
-
         <div class="flex items-start justify-between mb-8">
-
             <div>
                 <h1 class="text-5xl font-bold bg-gradient-to-r from-red-500 to-orange-400 bg-clip-text text-transparent">
                     Gymetix API Server
                 </h1>
-
                 <p class="mt-4 text-gray-400 max-w-2xl leading-relaxed">
                     Welcome to the official backend service for the Gymetix
-                    Fitness & Gym Management Platform. This server handles
-                    users, trainers, classes, bookings, community posts,
-                    authentication and payment processing.
+                    Fitness & Gym Management Platform.
                 </p>
             </div>
-
             <span class="px-4 py-2 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-medium">
                 ● Active
             </span>
-
         </div>
-
         <div class="border-t border-gray-800 my-8"></div>
-
         <div class="grid md:grid-cols-4 gap-4 mb-8">
-
             <div class="bg-gray-800/50 rounded-xl p-4">
-                <p class="text-gray-500 text-xs uppercase">
-                    Status
-                </p>
-
-                <h3 class="text-green-400 font-bold mt-2">
-                    Online
-                </h3>
+                <p class="text-gray-500 text-xs uppercase">Status</p>
+                <h3 class="text-green-400 font-bold mt-2">Online</h3>
             </div>
-
             <div class="bg-gray-800/50 rounded-xl p-4">
-                <p class="text-gray-500 text-xs uppercase">
-                    Database
-                </p>
-
-                <h3 class="font-bold mt-2">
-                    MongoDB Atlas
-                </h3>
+                <p class="text-gray-500 text-xs uppercase">Database</p>
+                <h3 class="font-bold mt-2">MongoDB Atlas</h3>
             </div>
-
             <div class="bg-gray-800/50 rounded-xl p-4">
-                <p class="text-gray-500 text-xs uppercase">
-                    Runtime
-                </p>
-
-                <h3 class="font-bold mt-2">
-                    Node.js
-                </h3>
+                <p class="text-gray-500 text-xs uppercase">Runtime</p>
+                <h3 class="font-bold mt-2">Node.js</h3>
             </div>
-
             <div class="bg-gray-800/50 rounded-xl p-4">
-                <p class="text-gray-500 text-xs uppercase">
-                    Version
-                </p>
-
-                <h3 class="font-bold mt-2">
-                    v1.0.0
-                </h3>
+                <p class="text-gray-500 text-xs uppercase">Version</p>
+                <h3 class="font-bold mt-2">v1.0.0</h3>
             </div>
-
         </div>
-
-        <h2 class="text-2xl font-bold mb-5">
-            Available Endpoints
-        </h2>
-
+        <h2 class="text-2xl font-bold mb-5">Available Endpoints</h2>
         <div class="space-y-3">
-
             <div class="bg-gray-800/40 hover:bg-gray-800 transition rounded-xl p-4 flex justify-between items-center">
                 <div>
-                    <h3 class="font-mono text-red-400">
-                        <a href="/user" target="_blank" class="url">/users</a>
-                    </h3>
-                    <p class="text-sm text-gray-400">
-                        Retrieve all registered users
-                    </p>
+                    <h3 class="font-mono text-red-400"><a href="/user" target="_blank">/users</a></h3>
+                    <p class="text-sm text-gray-400">Retrieve all registered users</p>
                 </div>
-
-                <span class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm">
-                    GET
-                </span>
+                <span class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm">GET</span>
             </div>
-
             <div class="bg-gray-800/40 hover:bg-gray-800 transition rounded-xl p-4 flex justify-between items-center">
                 <div>
-                    <h3 class="font-mono text-red-400">
-                        <a href="/trainers" target="_blank" class="url">/trainers</a>
-                    </h3>
-                    <p class="text-sm text-gray-400">
-                        Retrieve all approved trainers
-                    </p>
+                    <h3 class="font-mono text-red-400"><a href="/classes" target="_blank">/classes</a></h3>
+                    <p class="text-sm text-gray-400">Retrieve all gym classes</p>
                 </div>
-
-                <span class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm">
-                    GET
-                </span>
+                <span class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm">GET</span>
             </div>
-
             <div class="bg-gray-800/40 hover:bg-gray-800 transition rounded-xl p-4 flex justify-between items-center">
                 <div>
-                    <h3 class="font-mono text-red-400">
-                        <a href="/forums" target="_blank" class="url">/forums</a>
-                    </h3>
-                    <p class="text-sm text-gray-400">
-                        Retrieve community posts
-                    </p>
+                    <h3 class="font-mono text-red-400"><a href="/bookings" target="_blank">/bookings</a></h3>
+                    <p class="text-sm text-gray-400">Check or retrieve bookings</p>
                 </div>
-
-                <span class="bg-gradient-to-r from-red-500 to-orange-400 text-black text-semibold px-3 py-1 rounded-lg text-sm">
-                    POST
-                </span>
+                <span class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm">GET</span>
             </div>
-
-            <div class="bg-gray-800/40 hover:bg-gray-800 transition rounded-xl p-4 flex justify-between items-center">
-                <div>
-                    <h3 class="font-mono text-red-400">
-                        <a href="/classes" target="_blank" class="url">/classes</a>
-                    </h3>
-                    <p class="text-sm text-gray-400">
-                        Retrieve all gym classes
-                    </p>
-                </div>
-
-                <span class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm">
-                    GET
-                </span>
-            </div>
-
-            <div class="bg-gray-800/40 hover:bg-gray-800 transition rounded-xl p-4 flex justify-between items-center">
-                <div>
-                    <h3 class="font-mono text-red-400">
-                        <a href="/featured-classes" target="_blank" class="url">/featured-classes</a>
-                    </h3>
-                    <p class="text-sm text-gray-400">
-                        Retrieve all featured gym classes
-                    </p>
-                </div>
-
-                <span class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm">
-                    GET
-                </span>
-            </div>
-
         </div>
-
-        <div class="mt-8 pt-6 border-t border-gray-800 flex justify-between text-sm text-gray-500">
-
-            <span>
-                Gymetix Backend Infrastructure
-            </span>
-
-            <span>
-                Express • MongoDB • JWT
-            </span>
-
-        </div>
-
     </div>
-
 </div>
-
 </body>
 </html>`);
 });
@@ -232,17 +114,11 @@ app.post("/user", async (req, res) => {
   try {
     const db = await connectDB();
     const usersCollection = db.collection("user");
-
     const result = await usersCollection.insertOne(req.body);
-
     res.send(result);
   } catch (error) {
     console.error(error);
-
-    res.status(500).json({
-      message: error.message,
-      stack: error.stack,
-    });
+    res.status(500).json({ message: error.message });
   }
 });
 
@@ -250,17 +126,11 @@ app.get("/user", async (req, res) => {
   try {
     const db = await connectDB();
     const usersCollection = db.collection("user");
-
     const users = await usersCollection.find().toArray();
-
     res.send(users);
   } catch (error) {
     console.error(error);
-
-    res.status(500).json({
-      message: error.message,
-      stack: error.stack,
-    });
+    res.status(500).json({ message: error.message });
   }
 });
 
@@ -273,17 +143,8 @@ app.get("/classes", async (req, res) => {
     const { search, category, status } = req.query;
     let query = {};
 
-    
-    if (status) {
-      query.status = status;
-    }
-
-    // Filter by search term
-    if (search) {
-      query.title = { $regex: search, $options: "i" };
-    }
-
-    // Filter by category
+    if (status) query.status = status;
+    if (search) query.title = { $regex: search, $options: "i" };
     if (category && category !== "all") {
       const categoriesArray = Array.isArray(category) ? category : [category];
       query.category = { $in: categoriesArray };
@@ -293,21 +154,16 @@ app.get("/classes", async (req, res) => {
     res.send(classes);
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      message: error.message,
-      stack: error.stack,
-    });
+    res.status(500).json({ message: error.message });
   }
 });
 
-// GET a single class by ID
 app.get("/classes/:id", async (req, res) => {
   try {
     const db = await connectDB();
     const classesCollection = db.collection("classes");
 
     const id = req.params.id;
-
     if (!ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid class ID format" });
     }
@@ -322,14 +178,10 @@ app.get("/classes/:id", async (req, res) => {
     res.send(classItem);
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      message: error.message,
-      stack: error.stack,
-    });
+    res.status(500).json({ message: error.message });
   }
 });
 
-// featured-classes
 app.get("/featured-classes", async (req, res) => {
   try {
     const db = await connectDB();
@@ -344,27 +196,109 @@ app.get("/featured-classes", async (req, res) => {
     res.send(featured);
   } catch (error) {
     console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+});
 
-    res.status(500).json({
-      message: error.message,
-      stack: error.stack,
-    });
+app.get("/trainers", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const usersCollection = db.collection("user");
+    const trainers = await usersCollection.find({ role: "trainer" }).toArray();
+    res.send(trainers);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// =========================================
+// BOOKINGS ROUTES
+// =========================================
+
+// GET /bookings or GET /bookings?userId=...&classId=...
+app.get("/bookings", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const bookingsCollection = db.collection("bookings");
+
+    const { userId, classId } = req.query;
+
+    // If userId and classId are provided, check if the specific booking exists
+    if (userId && classId) {
+      const existingBooking = await bookingsCollection.findOne({
+        userId: userId,
+        classId: classId,
+      });
+
+      return res.send({ hasBooked: !!existingBooking });
+    }
+
+    // Otherwise, retrieve user's bookings if userId is given, or return all
+    let query = {};
+    if (userId) query.userId = userId;
+
+    const bookings = await bookingsCollection.find(query).toArray();
+    res.send(bookings);
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
+    res.status(500).json({ message: error.message });
   }
 });
 
 
-    // trainers Routes
-app.get("/trainers", async (req, res) => {
-    try {
-        const db = await connectDB();
-        const usersCollection = db.collection("user");
-        
-       
-        const trainers = await usersCollection.find({ role: "trainer" }).toArray();
-        res.send(trainers);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+// POST /bookings - Save new booking with validation
+app.post("/bookings", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const bookingsCollection = db.collection("bookings");
+
+    const { userId, classId, userEmail, className, price, trainerName } = req.body;
+
+    // 1. Validation: Ensure required fields are present
+    if (!userId || !classId) {
+      return res.status(400).json({ 
+        message: "Missing required booking details (userId or classId)." 
+      });
     }
+
+    // 2. Crucial Validation: Check if the user has already booked this specific class
+    const existingBooking = await bookingsCollection.findOne({
+      userId: userId,
+      classId: classId,
+    });
+
+    if (existingBooking) {
+      return res.status(400).json({ 
+        message: "You have already booked this class." 
+      });
+    }
+
+    // 3. Construct booking object
+    const newBooking = {
+      userId,
+      classId,
+      userEmail,
+      className,
+      price,
+      trainerName,
+      status: "pending", // or "paid" after payment completion
+      createdAt: new Date(),
+    };
+
+    // 4. Save to collection
+    const result = await bookingsCollection.insertOne(newBooking);
+
+    res.status(201).json({
+      success: true,
+      message: "Booking initiated successfully.",
+      insertedId: result.insertedId,
+      redirectUrl: `/payment?classId=${classId}&bookingId=${result.insertedId}`
+    });
+
+  } catch (error) {
+    console.error("Error creating booking:", error);
+    res.status(500).json({ message: error.message });
+  }
 });
 
 // Only listen locally
