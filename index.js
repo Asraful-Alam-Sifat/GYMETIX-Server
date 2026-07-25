@@ -441,6 +441,109 @@ app.delete("/bookings/:id", async (req, res) => {
   }
 });
 
+
+// FAVORITES ROUTES
+app.get("/favorites", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const favoritesCollection = db.collection("favorites");
+    const { userId, classId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ message: "Missing userId query parameter." });
+    }
+
+    if (classId) {
+      const favorite = await favoritesCollection.findOne({ userId, classId });
+      return res.send({ isFavorite: !!favorite });
+    }
+
+    const favorites = await favoritesCollection.find({ userId }).toArray();
+    res.send(favorites);
+  } catch (error) {
+    console.error("Error fetching favorites:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.post("/favorites", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const favoritesCollection = db.collection("favorites");
+    const { userId, classId, userEmail, className, trainerName, schedule, category } = req.body;
+
+    if (!userId || !classId) {
+      return res.status(400).json({ message: "Missing required favorite details." });
+    }
+
+    const existingFavorite = await favoritesCollection.findOne({ userId, classId });
+    if (existingFavorite) {
+      return res.status(400).json({ message: "Already in favorites" });
+    }
+
+    const newFavorite = {
+      userId,
+      classId,
+      userEmail,
+      className,
+      trainerName,
+      schedule,
+      category,
+      createdAt: new Date(),
+    };
+
+    const result = await favoritesCollection.insertOne(newFavorite);
+    res.status(201).json({ success: true, insertedId: result.insertedId });
+  } catch (error) {
+    console.error("Error adding favorite:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.delete("/favorites", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const favoritesCollection = db.collection("favorites");
+    const { userId, classId } = req.query;
+
+    if (!userId || !classId) {
+      return res.status(400).json({ message: "Missing userId or classId." });
+    }
+
+    const result = await favoritesCollection.deleteOne({ userId, classId });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: "Favorite not found." });
+    }
+
+    res.status(200).json({ success: true, message: "Removed from favorites." });
+  } catch (error) {
+    console.error("Error removing favorite:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.delete("/favorites/:id", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const favoritesCollection = db.collection("favorites");
+    const id = req.params.id;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid favorite ID format." });
+    }
+
+    const result = await favoritesCollection.deleteOne({ _id: new ObjectId(id) });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: "Favorite not found." });
+    }
+
+    res.status(200).json({ success: true, message: "Removed successfully." });
+  } catch (error) {
+    console.error("Error deleting favorite by ID:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Only listen locally
 if (require.main === module) {
   app.listen(port, () => {
