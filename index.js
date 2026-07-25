@@ -352,9 +352,7 @@ app.post("/create-checkout-session", async (req, res) => {
   }
 });
 
-
 // STRIPE WEBHOOK ROUTE 
-
 app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
@@ -415,9 +413,7 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
   res.json({ received: true });
 });
 
-
 // DELETE BOOKING ROUTE 
-
 app.delete("/bookings/:id", async (req, res) => {
   try {
     const db = await connectDB();
@@ -440,7 +436,6 @@ app.delete("/bookings/:id", async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
-
 
 // FAVORITES ROUTES
 app.get("/favorites", async (req, res) => {
@@ -540,6 +535,61 @@ app.delete("/favorites/:id", async (req, res) => {
     res.status(200).json({ success: true, message: "Removed successfully." });
   } catch (error) {
     console.error("Error deleting favorite by ID:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// COMMUNITY POSTS ROUTES
+app.get("/community-posts", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const postsCollection = db.collection("community_posts");
+
+    const { search, category } = req.query;
+    let query = {};
+
+    // Search filter across title and description
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } }
+      ];
+    }
+    
+    // Category filter
+    if (category && category !== "all") {
+      query.category = { $regex: category, $options: "i" };
+    }
+
+    const posts = await postsCollection.find(query).sort({ createdAt: -1 }).toArray();
+    res.send(posts);
+  } catch (error) {
+    console.error("Error fetching community posts:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// GET Single Community Post by ID
+app.get("/community-posts/:id", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const postsCollection = db.collection("community_posts");
+
+    const id = req.params.id;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid post ID format" });
+    }
+
+    const query = { _id: new ObjectId(id) };
+    const postItem = await postsCollection.findOne(query);
+
+    if (!postItem) {
+      return res.status(404).json({ message: "Community post not found" });
+    }
+
+    res.send(postItem);
+  } catch (error) {
+    console.error("Error fetching single post:", error);
     res.status(500).json({ message: error.message });
   }
 });
