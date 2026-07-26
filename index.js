@@ -433,22 +433,52 @@ app.post("/bookings", async (req, res) => {
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 // POST /create-checkout-session
+// POST /create-checkout-session
+// POST /create-checkout-session
 app.post("/create-checkout-session", async (req, res) => {
   try {
-    const { classId, bookingId, userId: bodyUserId, userEmail: bodyUserEmail, className, price, trainerName, image, category, schedule, time } = req.body;
-
+    const { 
+      classId, 
+      bookingId, 
+      userId: bodyUserId, 
+      userEmail: bodyUserEmail, 
+      userName: bodyUserName, 
+      className, 
+      price, 
+      trainerName, 
+      image, 
+      category, 
+      schedule, 
+      time 
+    } = req.body;
+  console.log("👉 Incoming body:", req.body);
     const db = await connectDB();
     
- let userId = bodyUserId || "";
+    let userId = bodyUserId || "";
     let userEmail = bodyUserEmail || ""; 
-    
-    if (bookingId && ObjectId.isValid(bookingId)) {
-      const existingBooking = await db.collection("bookings").findOne({ _id: new ObjectId(bookingId) });
-      if (existingBooking) {
-        userId = existingBooking.userId || userId;
-        userEmail = existingBooking.userEmail || userEmail;
-      }
+    let userName = bodyUserName || "";
+
+    // If userName is missing/empty, look up the user document in MongoDB
+    // In app.js -> app.post("/create-checkout-session")
+if (!userName && (userId || userEmail)) {
+  const orConditions = [];
+
+  if (userId) orConditions.push({ _id: userId });
+  if (userId && ObjectId.isValid(userId)) {
+    orConditions.push({ _id: new ObjectId(userId) });
+  }
+  if (userEmail) {
+    orConditions.push({ email: userEmail });
+  }
+
+  if (orConditions.length > 0) {
+    const userRecord = await db.collection("user").findOne({ $or: orConditions });
+    if (userRecord) {
+      // Check both 'name' and 'displayName'
+      userName = userRecord.name || userRecord.displayName || "";
     }
+  }
+}
 
     const classItem = await db.collection("classes").findOne({ _id: new ObjectId(classId) });
 
@@ -475,6 +505,7 @@ app.post("/create-checkout-session", async (req, res) => {
         classId,
         bookingId: bookingId || "",
         userEmail: userEmail || "",
+        userName: userName || "",
         className: className || classItem?.title || "",
         price: String(price || classItem?.price || 20),
         trainerName: trainerName || classItem?.trainer?.name || "",
@@ -493,6 +524,7 @@ app.post("/create-checkout-session", async (req, res) => {
 });
 
 // STRIPE WEBHOOK ROUTE 
+// STRIPE WEBHOOK ROUTE 
 app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
@@ -506,23 +538,22 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
-    const { userId, classId, userEmail, className, price, trainerName, image, category, schedule, time } = session.metadata;
-
+    // 👈 Destructure userName from session.metadata
+    const { userId, classId, userEmail, userName, className, price, trainerName, image, category, schedule, time } = session.metadata;
+    console.log("👉 Session metadata:", session.metadata);
     try {
       const db = await connectDB();
       
       let parsedSchedule = schedule;
       try {
         parsedSchedule = JSON.parse(schedule);
-      } catch (e) {
-   
-      }
+      } catch (e) {}
 
-     
       const newBooking = {
         userId,
         classId,
         userEmail,
+        userName, // 👈 Save userName to MongoDB
         className,
         price: Number(price),
         trainerName,
@@ -538,7 +569,6 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
       await db.collection("bookings").insertOne(newBooking);
       
-     
       await db.collection("classes").updateOne(
         { _id: new ObjectId(classId) },
         { $inc: { booked: 1 } }
