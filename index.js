@@ -2,13 +2,13 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const dotenv = require("dotenv");
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 dotenv.config();
 app.use(cors());
 
 app.use((req, res, next) => {
-  if (req.originalUrl === '/webhook') {
+  if (req.originalUrl === "/webhook") {
     next();
   } else {
     express.json()(req, res, next);
@@ -274,7 +274,8 @@ app.patch("/classes/:id", async (req, res) => {
     if (title !== undefined) updateFields.title = title;
     if (image !== undefined) updateFields.image = image;
     if (category !== undefined) updateFields.category = category;
-    if (difficultyLevel !== undefined) updateFields.difficultyLevel = difficultyLevel;
+    if (difficultyLevel !== undefined)
+      updateFields.difficultyLevel = difficultyLevel;
     if (duration !== undefined) updateFields.duration = duration;
     if (schedule !== undefined) {
       updateFields.schedule = Array.isArray(schedule)
@@ -297,7 +298,9 @@ app.patch("/classes/:id", async (req, res) => {
       return res.status(404).json({ message: "Class not found" });
     }
 
-    res.status(200).json({ success: true, message: "Class updated successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "Class updated successfully" });
   } catch (error) {
     console.error("Error updating class:", error);
     res.status(500).json({ message: error.message });
@@ -321,7 +324,9 @@ app.delete("/classes/:id", async (req, res) => {
       return res.status(404).json({ message: "Class not found" });
     }
 
-    res.status(200).json({ success: true, message: "Class deleted successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "Class deleted successfully" });
   } catch (error) {
     console.error("Error deleting class:", error);
     res.status(500).json({ message: error.message });
@@ -357,7 +362,6 @@ app.get("/trainers", async (req, res) => {
   }
 });
 
-
 // BOOKINGS ROUTES
 app.get("/bookings", async (req, res) => {
   try {
@@ -366,18 +370,16 @@ app.get("/bookings", async (req, res) => {
 
     const { userId, classId, status } = req.query;
 
-    // If userId and classId are provided, check if a paid/valid booking exists
     if (userId && classId) {
       const existingBooking = await bookingsCollection.findOne({
         userId: userId,
         classId: classId,
-        status: "paid" 
+        status: "paid",
       });
 
       return res.send({ hasBooked: !!existingBooking });
     }
 
-    
     let query = {};
     if (userId) query.userId = userId;
     if (classId) query.classId = classId;
@@ -391,7 +393,7 @@ app.get("/bookings", async (req, res) => {
   }
 });
 
-// POST /bookings - Validation check only (Does NOT create premature DB entry)
+// POST /bookings
 app.post("/bookings", async (req, res) => {
   try {
     const db = await connectDB();
@@ -400,29 +402,37 @@ app.post("/bookings", async (req, res) => {
     const { userId, classId } = req.body;
 
     if (!userId || !classId) {
-      return res.status(400).json({ 
-        message: "Missing required booking details (userId or classId)." 
+      return res.status(400).json({
+        message: "Missing required booking details (userId or classId).",
       });
     }
 
-   
     const existingBooking = await bookingsCollection.findOne({
       userId: userId,
       classId: classId,
-      status: "paid"
+      status: "paid",
     });
 
     if (existingBooking) {
-      return res.status(400).json({ 
-        message: "You have already booked this class." 
+      return res.status(400).json({
+        message: "You have already booked this class.",
       });
+    }
+
+    const classItem = await db
+      .collection("classes")
+      .findOne({ _id: new ObjectId(classId) });
+    if (!classItem) {
+      return res.status(404).json({ message: "Class not found." });
+    }
+    if (classItem.booked >= classItem.totalSlots) {
+      return res.status(400).json({ message: "This class is full." });
     }
 
     res.status(200).json({
       success: true,
-      message: "Validation passed. Proceed to payment."
+      message: "Validation passed. Proceed to payment.",
     });
-
   } catch (error) {
     console.error("Error validating booking:", error);
     res.status(500).json({ message: error.message });
@@ -433,54 +443,57 @@ app.post("/bookings", async (req, res) => {
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 // POST /create-checkout-session
-// POST /create-checkout-session
-// POST /create-checkout-session
 app.post("/create-checkout-session", async (req, res) => {
   try {
-    const { 
-      classId, 
-      bookingId, 
-      userId: bodyUserId, 
-      userEmail: bodyUserEmail, 
-      userName: bodyUserName, 
-      className, 
-      price, 
-      trainerName, 
-      image, 
-      category, 
-      schedule, 
-      time 
+    const {
+      classId,
+      bookingId,
+      userId: bodyUserId,
+      userEmail: bodyUserEmail,
+      userName: bodyUserName,
+      userImage: bodyUserImage,
+      className,
+      price,
+      trainerName,
+      image,
+      category,
+      schedule,
+      time,
     } = req.body;
-  console.log("👉 Incoming body:", req.body);
+
     const db = await connectDB();
-    
+
     let userId = bodyUserId || "";
-    let userEmail = bodyUserEmail || ""; 
+    let userEmail = bodyUserEmail || "";
     let userName = bodyUserName || "";
+    let userImage = bodyUserImage || "";
 
-    // If userName is missing/empty, look up the user document in MongoDB
-    // In app.js -> app.post("/create-checkout-session")
-if (!userName && (userId || userEmail)) {
-  const orConditions = [];
+    if (!userName && (userId || userEmail)) {
+      const orConditions = [];
 
-  if (userId) orConditions.push({ _id: userId });
-  if (userId && ObjectId.isValid(userId)) {
-    orConditions.push({ _id: new ObjectId(userId) });
-  }
-  if (userEmail) {
-    orConditions.push({ email: userEmail });
-  }
+      if (userId) orConditions.push({ _id: userId });
+      if (userId && ObjectId.isValid(userId)) {
+        orConditions.push({ _id: new ObjectId(userId) });
+      }
+      if (userEmail) {
+        orConditions.push({ email: userEmail });
+      }
 
-  if (orConditions.length > 0) {
-    const userRecord = await db.collection("user").findOne({ $or: orConditions });
-    if (userRecord) {
-      // Check both 'name' and 'displayName'
-      userName = userRecord.name || userRecord.displayName || "";
+      if (orConditions.length > 0) {
+        const userRecord = await db
+          .collection("user")
+          .findOne({ $or: orConditions });
+        if (userRecord) {
+          userName = userRecord.name || userRecord.displayName || "";
+          if (!userImage)
+            userImage = userRecord.image || userRecord.photoURL || "";
+        }
+      }
     }
-  }
-}
 
-    const classItem = await db.collection("classes").findOne({ _id: new ObjectId(classId) });
+    const classItem = await db
+      .collection("classes")
+      .findOne({ _id: new ObjectId(classId) });
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -491,7 +504,7 @@ if (!userName && (userId || userEmail)) {
             product_data: {
               name: className || classItem?.title || "Gym Class Booking",
             },
-            unit_amount: Math.round((price || classItem?.price || 20) * 100), 
+            unit_amount: Math.round((price || classItem?.price || 20) * 100),
           },
           quantity: 1,
         },
@@ -506,13 +519,17 @@ if (!userName && (userId || userEmail)) {
         bookingId: bookingId || "",
         userEmail: userEmail || "",
         userName: userName || "",
+        userImage: userImage || "",
         className: className || classItem?.title || "",
         price: String(price || classItem?.price || 20),
         trainerName: trainerName || classItem?.trainer?.name || "",
         image: image || classItem?.image || "",
         category: category || classItem?.category || "",
-        schedule: typeof schedule === 'string' ? schedule : JSON.stringify(schedule || classItem?.schedule || []),
-        time: time || classItem?.time || ""
+        schedule:
+          typeof schedule === "string"
+            ? schedule
+            : JSON.stringify(schedule || classItem?.schedule || []),
+        time: time || classItem?.time || "",
       },
     });
 
@@ -523,67 +540,100 @@ if (!userName && (userId || userEmail)) {
   }
 });
 
-// STRIPE WEBHOOK ROUTE 
-// STRIPE WEBHOOK ROUTE 
-app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
-  const sig = req.headers["stripe-signature"];
-  let event;
+// STRIPE WEBHOOK ROUTE
+app.post(
+  "/webhook",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const sig = req.headers["stripe-signature"];
+    let event;
 
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-  } catch (err) {
-    console.error("Webhook signature verification failed:", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object;
-    // 👈 Destructure userName from session.metadata
-    const { userId, classId, userEmail, userName, className, price, trainerName, image, category, schedule, time } = session.metadata;
-    console.log("👉 Session metadata:", session.metadata);
     try {
-      const db = await connectDB();
-      
-      let parsedSchedule = schedule;
-      try {
-        parsedSchedule = JSON.parse(schedule);
-      } catch (e) {}
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET,
+      );
+    } catch (err) {
+      console.error("Webhook signature verification failed:", err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
 
-      const newBooking = {
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
+      const {
         userId,
         classId,
         userEmail,
-        userName, // 👈 Save userName to MongoDB
+        userName,
+        userImage,
         className,
-        price: Number(price),
+        price,
         trainerName,
         image,
         category,
-        schedule: parsedSchedule,
+        schedule,
         time,
-        status: "paid",
-        paymentIntentId: session.payment_intent,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
+      } = session.metadata;
+      console.log("👉 Session metadata:", session.metadata);
+      try {
+        const db = await connectDB();
 
-      await db.collection("bookings").insertOne(newBooking);
-      
-      await db.collection("classes").updateOne(
-        { _id: new ObjectId(classId) },
-        { $inc: { booked: 1 } }
-      );
+        let parsedSchedule = schedule;
+        try {
+          parsedSchedule = JSON.parse(schedule);
+        } catch (e) {}
 
-      console.log(`✅ Payment confirmed via Webhook. Booking successfully created for class ${classId}.`);
-    } catch (dbError) {
-      console.error("Database insert error via webhook:", dbError);
+        const newBooking = {
+          userId,
+          classId,
+          userEmail,
+          userName,
+          className,
+          userImage,
+          price: Number(price),
+          trainerName,
+          image,
+          category,
+          schedule: parsedSchedule,
+          time,
+          status: "paid",
+          paymentIntentId: session.payment_intent,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        await db.collection("bookings").insertOne(newBooking);
+
+        const capacityUpdate = await db
+          .collection("classes")
+          .updateOne(
+            {
+              _id: new ObjectId(classId),
+              $expr: { $lt: ["$booked", "$totalSlots"] },
+            },
+            { $inc: { booked: 1 } },
+          );
+
+        if (capacityUpdate.modifiedCount === 0) {
+          console.warn(
+            `⚠️ Class ${classId} was full — booking recorded but slot not incremented (or already full).`,
+          );
+        }
+
+        console.log(
+          `✅ Payment confirmed via Webhook. Booking successfully created for class ${classId}.`,
+        );
+      } catch (dbError) {
+        console.error("Database insert error via webhook:", dbError);
+      }
     }
-  }
 
-  res.json({ received: true });
-});
+    res.json({ received: true });
+  },
+);
 
-// DELETE BOOKING ROUTE 
+// DELETE BOOKING ROUTE
 app.delete("/bookings/:id", async (req, res) => {
   try {
     const db = await connectDB();
@@ -594,13 +644,17 @@ app.delete("/bookings/:id", async (req, res) => {
       return res.status(400).json({ message: "Invalid booking ID format" });
     }
 
-    const result = await bookingsCollection.deleteOne({ _id: new ObjectId(id) });
+    const result = await bookingsCollection.deleteOne({
+      _id: new ObjectId(id),
+    });
 
     if (result.deletedCount === 0) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    res.status(200).json({ success: true, message: "Booking deleted successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "Booking deleted successfully" });
   } catch (error) {
     console.error("Error deleting booking:", error);
     res.status(500).json({ message: error.message });
@@ -615,7 +669,9 @@ app.get("/favorites", async (req, res) => {
     const { userId, classId } = req.query;
 
     if (!userId) {
-      return res.status(400).json({ message: "Missing userId query parameter." });
+      return res
+        .status(400)
+        .json({ message: "Missing userId query parameter." });
     }
 
     if (classId) {
@@ -635,13 +691,27 @@ app.post("/favorites", async (req, res) => {
   try {
     const db = await connectDB();
     const favoritesCollection = db.collection("favorites");
-    const { userId, classId, userEmail, className, trainerName, schedule, category } = req.body;
+    const {
+      userId,
+      classId,
+      userEmail,
+      className,
+      trainerName,
+      schedule,
+      category,
+      image,
+    } = req.body;
 
     if (!userId || !classId) {
-      return res.status(400).json({ message: "Missing required favorite details." });
+      return res
+        .status(400)
+        .json({ message: "Missing required favorite details." });
     }
 
-    const existingFavorite = await favoritesCollection.findOne({ userId, classId });
+    const existingFavorite = await favoritesCollection.findOne({
+      userId,
+      classId,
+    });
     if (existingFavorite) {
       return res.status(400).json({ message: "Already in favorites" });
     }
@@ -654,6 +724,7 @@ app.post("/favorites", async (req, res) => {
       trainerName,
       schedule,
       category,
+      image,
       createdAt: new Date(),
     };
 
@@ -697,7 +768,9 @@ app.delete("/favorites/:id", async (req, res) => {
       return res.status(400).json({ message: "Invalid favorite ID format." });
     }
 
-    const result = await favoritesCollection.deleteOne({ _id: new ObjectId(id) });
+    const result = await favoritesCollection.deleteOne({
+      _id: new ObjectId(id),
+    });
     if (result.deletedCount === 0) {
       return res.status(404).json({ message: "Favorite not found." });
     }
@@ -718,23 +791,23 @@ app.get("/community-posts", async (req, res) => {
     const { search, category, authorId } = req.query;
     let query = {};
 
-    // Search filter across title and description
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } }
+        { description: { $regex: search, $options: "i" } },
       ];
     }
-    
-    // Category filter
+
     if (category && category !== "all") {
       query.category = { $regex: category, $options: "i" };
     }
 
-    // Author filter (e.g. trainer viewing their own posts)
     if (authorId) query.authorId = authorId;
 
-    const posts = await postsCollection.find(query).sort({ createdAt: -1 }).toArray();
+    const posts = await postsCollection
+      .find(query)
+      .sort({ createdAt: -1 })
+      .toArray();
     res.send(posts);
   } catch (error) {
     console.error("Error fetching community posts:", error);
@@ -743,17 +816,18 @@ app.get("/community-posts", async (req, res) => {
 });
 
 // POST /community-posts - Trainer publishes a new post to the forum
-
 app.post("/community-posts", async (req, res) => {
   try {
     const db = await connectDB();
     const postsCollection = db.collection("community_posts");
 
-    const { title, image, description, category, authorId, authorName } = req.body;
+    const { title, image, description, category, authorId, authorName } =
+      req.body;
 
     if (!title || !description || !authorId) {
       return res.status(400).json({
-        message: "Missing required post details (title, description, or authorId).",
+        message:
+          "Missing required post details (title, description, or authorId).",
       });
     }
 
@@ -764,7 +838,12 @@ app.post("/community-posts", async (req, res) => {
       category: category || "General",
       authorId,
       authorName: authorName || "",
-      engagement: { likes: [], dislikes: [], likesCount: "0", dislikesCount: "0" },
+      engagement: {
+        likes: [],
+        dislikes: [],
+        likesCount: "0",
+        dislikesCount: "0",
+      },
       comments: [],
       createdAt: new Date(),
     };
@@ -795,7 +874,9 @@ app.delete("/community-posts/:id", async (req, res) => {
       return res.status(404).json({ message: "Community post not found" });
     }
 
-    res.status(200).json({ success: true, message: "Post deleted successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "Post deleted successfully" });
   } catch (error) {
     console.error("Error deleting community post:", error);
     res.status(500).json({ message: error.message });
@@ -810,9 +891,8 @@ app.get("/community-posts/:id", async (req, res) => {
 
     const id = req.params.id;
 
-    // Build a query that safely checks both ObjectId and string formats
     let query = {
-      $or: [{ _id: id }]
+      $or: [{ _id: id }],
     };
 
     if (ObjectId.isValid(id)) {
@@ -832,15 +912,13 @@ app.get("/community-posts/:id", async (req, res) => {
   }
 });
 
-// --- COMMUNITY POST VOTING & COMMENTS ROUTES ---
 // 1. Handle Vote (Like / Dislike)
-// Toggle Like/Dislike Route
 app.patch("/community-posts/:postId/vote", async (req, res) => {
   try {
     const db = await connectDB();
     const postsCollection = db.collection("community_posts");
     const { postId } = req.params;
-    const { userId, type } = req.body; 
+    const { userId, type } = req.body;
 
     let query = { $or: [{ _id: postId }] };
     if (ObjectId.isValid(postId)) {
@@ -854,16 +932,31 @@ app.patch("/community-posts/:postId/vote", async (req, res) => {
 
     let engagement = post.engagement || {};
     let likes = Array.isArray(engagement.likes) ? [...engagement.likes] : [];
-    let dislikes = Array.isArray(engagement.dislikes) ? [...engagement.dislikes] : [];
+    let dislikes = Array.isArray(engagement.dislikes)
+      ? [...engagement.dislikes]
+      : [];
 
-   
-    if (likes.length === 0 && engagement.likesCount && Number(engagement.likesCount) > 0) {
+    if (
+      likes.length === 0 &&
+      engagement.likesCount &&
+      Number(engagement.likesCount) > 0
+    ) {
       const initialCount = Number(engagement.likesCount);
-      likes = Array.from({ length: initialCount }, (_, index) => `legacy_user_${index}`);
+      likes = Array.from(
+        { length: initialCount },
+        (_, index) => `legacy_user_${index}`,
+      );
     }
-    if (dislikes.length === 0 && engagement.dislikesCount && Number(engagement.dislikesCount) > 0) {
+    if (
+      dislikes.length === 0 &&
+      engagement.dislikesCount &&
+      Number(engagement.dislikesCount) > 0
+    ) {
       const initialCount = Number(engagement.dislikesCount);
-      dislikes = Array.from({ length: initialCount }, (_, index) => `legacy_user_${index}`);
+      dislikes = Array.from(
+        { length: initialCount },
+        (_, index) => `legacy_user_${index}`,
+      );
     }
 
     const hasLiked = likes.includes(userId);
@@ -871,7 +964,7 @@ app.patch("/community-posts/:postId/vote", async (req, res) => {
 
     if (type === "like") {
       if (hasLiked) {
-        likes = likes.filter((id) => id !== userId); 
+        likes = likes.filter((id) => id !== userId);
       } else {
         likes.push(userId);
         dislikes = dislikes.filter((id) => id !== userId);
@@ -881,7 +974,7 @@ app.patch("/community-posts/:postId/vote", async (req, res) => {
         dislikes = dislikes.filter((id) => id !== userId);
       } else {
         dislikes.push(userId);
-        likes = likes.filter((id) => id !== userId); 
+        likes = likes.filter((id) => id !== userId);
       }
     }
 
@@ -921,7 +1014,7 @@ app.post("/community-posts/:id/comments", async (req, res) => {
       _id: new ObjectId(),
       text: req.body.text,
       author: req.body.author,
-      createdAt: new Date()
+      createdAt: new Date(),
     };
 
     const post = await postsCollection.findOne(query);
@@ -962,11 +1055,13 @@ app.delete("/community-posts/:postId/comments/:commentId", async (req, res) => {
     }
 
     await postsCollection.updateOne(query, {
-      $pull: { comments: { _id: commentQueryId } }
+      $pull: { comments: { _id: commentQueryId } },
     });
 
     const updatedPost = await postsCollection.findOne(query);
-    res.status(200).json({ success: true, comments: updatedPost.comments || [] });
+    res
+      .status(200)
+      .json({ success: true, comments: updatedPost.comments || [] });
   } catch (error) {
     console.error("Error deleting comment:", error);
     res.status(500).json({ message: error.message });
@@ -998,17 +1093,18 @@ app.patch("/community-posts/:postId/comments/:commentId", async (req, res) => {
 
     await postsCollection.updateOne(
       { ...query, "comments._id": commentQueryId },
-      { $set: { "comments.$.text": text } }
+      { $set: { "comments.$.text": text } },
     );
 
     const updatedPost = await postsCollection.findOne(query);
-    res.status(200).json({ success: true, comments: updatedPost.comments || [] });
+    res
+      .status(200)
+      .json({ success: true, comments: updatedPost.comments || [] });
   } catch (error) {
     console.error("Error editing comment:", error);
     res.status(500).json({ message: error.message });
   }
 });
-
 
 // Only listen locally
 if (require.main === module) {
