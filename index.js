@@ -147,10 +147,11 @@ app.get("/classes", async (req, res) => {
     const db = await connectDB();
     const classesCollection = db.collection("classes");
 
-    const { search, category, status } = req.query;
+    const { search, category, status, trainerId } = req.query;
     let query = {};
 
     if (status) query.status = status;
+    if (trainerId) query.trainerId = trainerId;
     if (search) query.title = { $regex: search, $options: "i" };
     if (category && category !== "all") {
       const categoriesArray = Array.isArray(category) ? category : [category];
@@ -161,6 +162,63 @@ app.get("/classes", async (req, res) => {
     res.send(classes);
   } catch (error) {
     console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// POST /classes - Trainer creates a new class (always starts as "Pending")
+app.post("/classes", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const classesCollection = db.collection("classes");
+
+    const {
+      title,
+      image,
+      category,
+      difficultyLevel,
+      duration,
+      schedule,
+      time,
+      price,
+      description,
+      trainerId,
+      trainerName,
+    } = req.body;
+
+    if (!title || !trainerId) {
+      return res.status(400).json({
+        message: "Missing required class details (title or trainerId).",
+      });
+    }
+
+    const newClass = {
+      title,
+      image: image || "",
+      category: category || "",
+      difficultyLevel: difficultyLevel || "",
+      duration: duration || "",
+      schedule: Array.isArray(schedule)
+        ? schedule
+        : String(schedule || "")
+            .split(",")
+            .map((day) => day.trim())
+            .filter(Boolean),
+      time: time || "",
+      price: Number(price) || 0,
+      description: description || "",
+      trainerId,
+      trainer: { id: trainerId, name: trainerName || "" },
+      status: "Pending",
+      booked: 0,
+      rating: 0,
+      createdAt: new Date(),
+    };
+
+    const result = await classesCollection.insertOne(newClass);
+    res.status(201).json({ success: true, insertedId: result.insertedId });
+  } catch (error) {
+    console.error("Error creating class:", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -185,6 +243,87 @@ app.get("/classes/:id", async (req, res) => {
     res.send(classItem);
   } catch (error) {
     console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// PATCH /classes/:id - Trainer updates their own class
+app.patch("/classes/:id", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const classesCollection = db.collection("classes");
+
+    const id = req.params.id;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid class ID format" });
+    }
+
+    const {
+      title,
+      image,
+      category,
+      difficultyLevel,
+      duration,
+      schedule,
+      time,
+      price,
+      description,
+    } = req.body;
+
+    const updateFields = { updatedAt: new Date() };
+    if (title !== undefined) updateFields.title = title;
+    if (image !== undefined) updateFields.image = image;
+    if (category !== undefined) updateFields.category = category;
+    if (difficultyLevel !== undefined) updateFields.difficultyLevel = difficultyLevel;
+    if (duration !== undefined) updateFields.duration = duration;
+    if (schedule !== undefined) {
+      updateFields.schedule = Array.isArray(schedule)
+        ? schedule
+        : String(schedule)
+            .split(",")
+            .map((day) => day.trim())
+            .filter(Boolean);
+    }
+    if (time !== undefined) updateFields.time = time;
+    if (price !== undefined) updateFields.price = Number(price);
+    if (description !== undefined) updateFields.description = description;
+
+    const result = await classesCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateFields },
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    res.status(200).json({ success: true, message: "Class updated successfully" });
+  } catch (error) {
+    console.error("Error updating class:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// DELETE /classes/:id - Trainer removes their own class
+app.delete("/classes/:id", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const classesCollection = db.collection("classes");
+
+    const id = req.params.id;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid class ID format" });
+    }
+
+    const result = await classesCollection.deleteOne({ _id: new ObjectId(id) });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    res.status(200).json({ success: true, message: "Class deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting class:", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -241,6 +380,7 @@ app.get("/bookings", async (req, res) => {
     
     let query = {};
     if (userId) query.userId = userId;
+    if (classId) query.classId = classId;
     if (status) query.status = status;
 
     const bookings = await bookingsCollection.find(query).toArray();
@@ -545,7 +685,7 @@ app.get("/community-posts", async (req, res) => {
     const db = await connectDB();
     const postsCollection = db.collection("community_posts");
 
-    const { search, category } = req.query;
+    const { search, category, authorId } = req.query;
     let query = {};
 
     // Search filter across title and description
@@ -561,10 +701,73 @@ app.get("/community-posts", async (req, res) => {
       query.category = { $regex: category, $options: "i" };
     }
 
+    // Author filter (e.g. trainer viewing their own posts)
+    if (authorId) query.authorId = authorId;
+
     const posts = await postsCollection.find(query).sort({ createdAt: -1 }).toArray();
     res.send(posts);
   } catch (error) {
     console.error("Error fetching community posts:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// POST /community-posts - Trainer publishes a new post to the forum
+
+app.post("/community-posts", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const postsCollection = db.collection("community_posts");
+
+    const { title, image, description, category, authorId, authorName } = req.body;
+
+    if (!title || !description || !authorId) {
+      return res.status(400).json({
+        message: "Missing required post details (title, description, or authorId).",
+      });
+    }
+
+    const newPost = {
+      title,
+      image: image || "",
+      description,
+      category: category || "General",
+      authorId,
+      authorName: authorName || "",
+      engagement: { likes: [], dislikes: [], likesCount: "0", dislikesCount: "0" },
+      comments: [],
+      createdAt: new Date(),
+    };
+
+    const result = await postsCollection.insertOne(newPost);
+    res.status(201).json({ success: true, insertedId: result.insertedId });
+  } catch (error) {
+    console.error("Error creating community post:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// DELETE /community-posts/:id - Trainer removes their own post
+app.delete("/community-posts/:id", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const postsCollection = db.collection("community_posts");
+    const id = req.params.id;
+
+    let query = { $or: [{ _id: id }] };
+    if (ObjectId.isValid(id)) {
+      query.$or.push({ _id: new ObjectId(id) });
+    }
+
+    const result = await postsCollection.deleteOne(query);
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: "Community post not found" });
+    }
+
+    res.status(200).json({ success: true, message: "Post deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting community post:", error);
     res.status(500).json({ message: error.message });
   }
 });
