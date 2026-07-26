@@ -576,11 +576,16 @@ app.get("/community-posts/:id", async (req, res) => {
     const postsCollection = db.collection("community_posts");
 
     const id = req.params.id;
-    if (!ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid post ID format" });
+
+    // Build a query that safely checks both ObjectId and string formats
+    let query = {
+      $or: [{ _id: id }]
+    };
+
+    if (ObjectId.isValid(id)) {
+      query.$or.push({ _id: new ObjectId(id) });
     }
 
-    const query = { _id: new ObjectId(id) };
     const postItem = await postsCollection.findOne(query);
 
     if (!postItem) {
@@ -593,6 +598,184 @@ app.get("/community-posts/:id", async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+// --- COMMUNITY POST VOTING & COMMENTS ROUTES ---
+// 1. Handle Vote (Like / Dislike)
+// Toggle Like/Dislike Route
+app.patch("/community-posts/:postId/vote", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const postsCollection = db.collection("community_posts");
+    const { postId } = req.params;
+    const { userId, type } = req.body; 
+
+    let query = { $or: [{ _id: postId }] };
+    if (ObjectId.isValid(postId)) {
+      query.$or.push({ _id: new ObjectId(postId) });
+    }
+
+    const post = await postsCollection.findOne(query);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    let engagement = post.engagement || {};
+    let likes = Array.isArray(engagement.likes) ? [...engagement.likes] : [];
+    let dislikes = Array.isArray(engagement.dislikes) ? [...engagement.dislikes] : [];
+
+   
+    if (likes.length === 0 && engagement.likesCount && Number(engagement.likesCount) > 0) {
+      const initialCount = Number(engagement.likesCount);
+      likes = Array.from({ length: initialCount }, (_, index) => `legacy_user_${index}`);
+    }
+    if (dislikes.length === 0 && engagement.dislikesCount && Number(engagement.dislikesCount) > 0) {
+      const initialCount = Number(engagement.dislikesCount);
+      dislikes = Array.from({ length: initialCount }, (_, index) => `legacy_user_${index}`);
+    }
+
+    const hasLiked = likes.includes(userId);
+    const hasDisliked = dislikes.includes(userId);
+
+    if (type === "like") {
+      if (hasLiked) {
+        likes = likes.filter((id) => id !== userId); 
+      } else {
+        likes.push(userId);
+        dislikes = dislikes.filter((id) => id !== userId);
+      }
+    } else if (type === "dislike") {
+      if (hasDisliked) {
+        dislikes = dislikes.filter((id) => id !== userId);
+      } else {
+        dislikes.push(userId);
+        likes = likes.filter((id) => id !== userId); 
+      }
+    }
+
+    const updatedEngagement = {
+      ...engagement,
+      likes,
+      dislikes,
+      likesCount: String(likes.length),
+      dislikesCount: String(dislikes.length),
+    };
+
+    await postsCollection.updateOne(query, {
+      $set: { engagement: updatedEngagement },
+    });
+
+    const updatedPost = await postsCollection.findOne(query);
+    res.status(200).json(updatedPost);
+  } catch (error) {
+    console.error("Error updating vote:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// 2. Add a Comment
+app.post("/community-posts/:id/comments", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const postsCollection = db.collection("community_posts");
+    const id = req.params.id;
+
+    let query = { $or: [{ _id: id }] };
+    if (ObjectId.isValid(id)) {
+      query.$or.push({ _id: new ObjectId(id) });
+    }
+
+    const newComment = {
+      _id: new ObjectId(),
+      text: req.body.text,
+      author: req.body.author,
+      createdAt: new Date()
+    };
+
+    const post = await postsCollection.findOne(query);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    await postsCollection.updateOne(query, { $push: { comments: newComment } });
+
+    const updatedPost = await postsCollection.findOne(query);
+    res.send(updatedPost.comments || []);
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// 3. Delete a Comment
+app.delete("/community-posts/:postId/comments/:commentId", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const postsCollection = db.collection("community_posts");
+    const { postId, commentId } = req.params;
+
+    let query = { $or: [{ _id: postId }] };
+    if (ObjectId.isValid(postId)) {
+      query.$or.push({ _id: new ObjectId(postId) });
+    }
+
+    let commentQueryId = commentId;
+    if (ObjectId.isValid(commentId)) {
+      commentQueryId = new ObjectId(commentId);
+    }
+
+    const post = await postsCollection.findOne(query);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    await postsCollection.updateOne(query, {
+      $pull: { comments: { _id: commentQueryId } }
+    });
+
+    const updatedPost = await postsCollection.findOne(query);
+    res.status(200).json({ success: true, comments: updatedPost.comments || [] });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// 4. Update/Edit a Comment
+app.patch("/community-posts/:postId/comments/:commentId", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const postsCollection = db.collection("community_posts");
+    const { postId, commentId } = req.params;
+    const { text } = req.body;
+
+    let query = { $or: [{ _id: postId }] };
+    if (ObjectId.isValid(postId)) {
+      query.$or.push({ _id: new ObjectId(postId) });
+    }
+
+    let commentQueryId = commentId;
+    if (ObjectId.isValid(commentId)) {
+      commentQueryId = new ObjectId(commentId);
+    }
+
+    const post = await postsCollection.findOne(query);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    await postsCollection.updateOne(
+      { ...query, "comments._id": commentQueryId },
+      { $set: { "comments.$.text": text } }
+    );
+
+    const updatedPost = await postsCollection.findOne(query);
+    res.status(200).json({ success: true, comments: updatedPost.comments || [] });
+  } catch (error) {
+    console.error("Error editing comment:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 
 // Only listen locally
 if (require.main === module) {
