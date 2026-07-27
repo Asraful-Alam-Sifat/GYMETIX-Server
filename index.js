@@ -116,6 +116,16 @@ async function connectDB() {
   return db;
 }
 
+// Helper: checks whether a user has been soft-blocked by an Admin.
+async function isUserBlocked(db, userId) {
+  if (!userId) return false;
+  const usersCollection = db.collection("user");
+  let query = { $or: [{ _id: userId }] };
+  if (ObjectId.isValid(userId)) query.$or.push({ _id: new ObjectId(userId) });
+  const user = await usersCollection.findOne(query);
+  return user?.status === "blocked";
+}
+
 // User Routes
 app.post("/user", async (req, res) => {
   try {
@@ -174,6 +184,12 @@ app.get("/classes", async (req, res) => {
 app.post("/classes", async (req, res) => {
   try {
     const db = await connectDB();
+    const { trainerId } = req.body;
+
+    if (await isUserBlocked(db, trainerId)) {
+      return res.status(403).json({ message: "Action restricted by Admin." });
+    }
+
     const classesCollection = db.collection("classes");
 
     const {
@@ -186,7 +202,6 @@ app.post("/classes", async (req, res) => {
       time,
       price,
       description,
-      trainerId,
       trainerName,
       trainerAvatar, 
       totalSlots,
@@ -197,11 +212,10 @@ app.post("/classes", async (req, res) => {
         message: "Missing required class details (title or trainerId).",
       });
     }
-
     
     const numericDuration = Number(String(duration).replace(/[^0-9]/g, "")) || 0;
 
-  const newClass = {
+    const newClass = {
       title,
       category: category || "",
       level: difficultyLevel || "",
@@ -270,6 +284,12 @@ app.patch("/classes/:id", async (req, res) => {
     const id = req.params.id;
     if (!ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid class ID format" });
+    }
+
+    // Optional: extract trainerId from req.body if sent, to verify block status
+    const { trainerId } = req.body;
+    if (trainerId && (await isUserBlocked(db, trainerId))) {
+      return res.status(403).json({ message: "Action restricted by Admin." });
     }
 
     const {
@@ -421,6 +441,10 @@ app.post("/bookings", async (req, res) => {
       });
     }
 
+    if (await isUserBlocked(db, userId)) {
+      return res.status(403).json({ message: "Action restricted by Admin." });
+    }
+
     const existingBooking = await bookingsCollection.findOne({
       userId: userId,
       classId: classId,
@@ -479,6 +503,11 @@ app.post("/create-checkout-session", async (req, res) => {
 
     let userId = bodyUserId || "";
     let userEmail = bodyUserEmail || "";
+
+    if (userId && (await isUserBlocked(db, userId))) {
+      return res.status(403).json({ message: "Action restricted by Admin." });
+    }
+
     let userName = bodyUserName || "";
     let userImage = bodyUserImage || "";
 
@@ -498,6 +527,9 @@ app.post("/create-checkout-session", async (req, res) => {
           .collection("user")
           .findOne({ $or: orConditions });
         if (userRecord) {
+          if (userRecord.status === "blocked") {
+            return res.status(403).json({ message: "Action restricted by Admin." });
+          }
           userName = userRecord.name || userRecord.displayName || "";
           if (!userImage)
             userImage = userRecord.image || userRecord.photoURL || "";
@@ -589,9 +621,15 @@ app.post(
         schedule,
         time,
       } = session.metadata;
-      console.log("👉 Session metadata:", session.metadata);
+
       try {
         const db = await connectDB();
+
+        // Check block status at webhook completion safety measure
+        if (await isUserBlocked(db, userId)) {
+          console.warn(`⚠️ Blocked user ${userId} attempted checkout completion. Booking aborted.`);
+          return res.json({ received: true });
+        }
 
         let parsedSchedule = schedule;
         try {
@@ -619,7 +657,7 @@ app.post(
 
         await db.collection("bookings").insertOne(newBooking);
 
-        const capacityUpdate = await db
+        await db
           .collection("classes")
           .updateOne(
             {
@@ -629,15 +667,7 @@ app.post(
             { $inc: { booked: 1 } },
           );
 
-        if (capacityUpdate.modifiedCount === 0) {
-          console.warn(
-            `⚠️ Class ${classId} was full — booking recorded but slot not incremented (or already full).`,
-          );
-        }
-
-        console.log(
-          `✅ Payment confirmed via Webhook. Booking successfully created for class ${classId}.`,
-        );
+        console.log(`✅ Payment confirmed via Webhook. Booking successfully created for class ${classId}.`);
       } catch (dbError) {
         console.error("Database insert error via webhook:", dbError);
       }
@@ -704,10 +734,20 @@ app.get("/favorites", async (req, res) => {
 app.post("/favorites", async (req, res) => {
   try {
     const db = await connectDB();
+    const { userId, classId } = req.body;
+
+    if (!userId || !classId) {
+      return res
+        .status(400)
+        .json({ message: "Missing required favorite details." });
+    }
+
+    if (await isUserBlocked(db, userId)) {
+      return res.status(403).json({ message: "Action restricted by Admin." });
+    }
+
     const favoritesCollection = db.collection("favorites");
     const {
-      userId,
-      classId,
       userEmail,
       className,
       trainerName,
@@ -715,12 +755,6 @@ app.post("/favorites", async (req, res) => {
       category,
       image,
     } = req.body;
-
-    if (!userId || !classId) {
-      return res
-        .status(400)
-        .json({ message: "Missing required favorite details." });
-    }
 
     const existingFavorite = await favoritesCollection.findOne({
       userId,
@@ -842,6 +876,10 @@ app.post("/community-posts", async (req, res) => {
       });
     }
 
+    if (await isUserBlocked(db, authorId)) {
+      return res.status(403).json({ message: "Action restricted by Admin." });
+    }
+
     const newPost = {
       title,
       image: image || "",
@@ -854,7 +892,7 @@ app.post("/community-posts", async (req, res) => {
         badge: author?.badge || "",
         avatar: author?.avatar || "",
       },
-      tags: [], // Optional: add tags array if your UI supports it
+      tags: [],
       engagement: {
         likesCount: "0",
         dislikesCount: "0",
@@ -874,7 +912,6 @@ app.post("/community-posts", async (req, res) => {
   }
 });
 
-// DELETE /community-posts/:id - Trainer removes their own post
 app.delete("/community-posts/:id", async (req, res) => {
   try {
     const db = await connectDB();
@@ -901,7 +938,6 @@ app.delete("/community-posts/:id", async (req, res) => {
   }
 });
 
-// GET Single Community Post by ID
 app.get("/community-posts/:id", async (req, res) => {
   try {
     const db = await connectDB();
@@ -931,12 +967,18 @@ app.get("/community-posts/:id", async (req, res) => {
 });
 
 // 1. Handle Vote (Like / Dislike)
+// 1. Handle Vote (Like / Dislike)
 app.patch("/community-posts/:postId/vote", async (req, res) => {
   try {
     const db = await connectDB();
     const postsCollection = db.collection("community_posts");
     const { postId } = req.params;
     const { userId, type } = req.body;
+
+    // Security check: Blocked users cannot vote
+    if (await isUserBlocked(db, userId)) {
+      return res.status(403).json({ message: "Action restricted by Admin." });
+    }
 
     let query = { $or: [{ _id: postId }] };
     if (ObjectId.isValid(postId)) {
@@ -953,29 +995,6 @@ app.patch("/community-posts/:postId/vote", async (req, res) => {
     let dislikes = Array.isArray(engagement.dislikes)
       ? [...engagement.dislikes]
       : [];
-
-    if (
-      likes.length === 0 &&
-      engagement.likesCount &&
-      Number(engagement.likesCount) > 0
-    ) {
-      const initialCount = Number(engagement.likesCount);
-      likes = Array.from(
-        { length: initialCount },
-        (_, index) => `legacy_user_${index}`,
-      );
-    }
-    if (
-      dislikes.length === 0 &&
-      engagement.dislikesCount &&
-      Number(engagement.dislikesCount) > 0
-    ) {
-      const initialCount = Number(engagement.dislikesCount);
-      dislikes = Array.from(
-        { length: initialCount },
-        (_, index) => `legacy_user_${index}`,
-      );
-    }
 
     const hasLiked = likes.includes(userId);
     const hasDisliked = dislikes.includes(userId);
@@ -1023,6 +1042,28 @@ app.post("/community-posts/:id/comments", async (req, res) => {
     const postsCollection = db.collection("community_posts");
     const id = req.params.id;
 
+    // Extract user email or id from author payload or request body
+    const commenterIdentifier =
+      req.body.author?.email ||
+      req.body.authorId ||
+      req.body.author?.id ||
+      req.body.userId;
+
+    // Security check: Check block status by ID or Email lookup
+    let isBlocked = await isUserBlocked(db, commenterIdentifier);
+    if (!isBlocked && req.body.author?.email) {
+      const userRecord = await db
+        .collection("user")
+        .findOne({ email: req.body.author.email });
+      if (userRecord && userRecord.status === "blocked") {
+        isBlocked = true;
+      }
+    }
+
+    if (isBlocked) {
+      return res.status(403).json({ message: "Action restricted by Admin." });
+    }
+
     let query = { $or: [{ _id: id }] };
     if (ObjectId.isValid(id)) {
       query.$or.push({ _id: new ObjectId(id) });
@@ -1056,6 +1097,11 @@ app.delete("/community-posts/:postId/comments/:commentId", async (req, res) => {
     const db = await connectDB();
     const postsCollection = db.collection("community_posts");
     const { postId, commentId } = req.params;
+    const userId = req.body?.userId;
+
+    if (userId && (await isUserBlocked(db, userId))) {
+      return res.status(403).json({ message: "Action restricted by Admin." });
+    }
 
     let query = { $or: [{ _id: postId }] };
     if (ObjectId.isValid(postId)) {
@@ -1092,7 +1138,11 @@ app.patch("/community-posts/:postId/comments/:commentId", async (req, res) => {
     const db = await connectDB();
     const postsCollection = db.collection("community_posts");
     const { postId, commentId } = req.params;
-    const { text } = req.body;
+    const { text, userId } = req.body;
+
+    if (userId && (await isUserBlocked(db, userId))) {
+      return res.status(403).json({ message: "Action restricted by Admin." });
+    }
 
     let query = { $or: [{ _id: postId }] };
     if (ObjectId.isValid(postId)) {
@@ -1111,7 +1161,7 @@ app.patch("/community-posts/:postId/comments/:commentId", async (req, res) => {
 
     await postsCollection.updateOne(
       { ...query, "comments._id": commentQueryId },
-      { $set: { "comments.$.text": text } },
+      { $set: { "comments.$.text": text } }
     );
 
     const updatedPost = await postsCollection.findOne(query);
@@ -1124,7 +1174,205 @@ app.patch("/community-posts/:postId/comments/:commentId", async (req, res) => {
   }
 });
 
-// Only listen locally
+// ADMIN ROUTES
+app.patch("/user/:id", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const usersCollection = db.collection("user");
+    const id = req.params.id;
+
+    let query = { $or: [{ _id: id }] };
+    if (ObjectId.isValid(id)) query.$or.push({ _id: new ObjectId(id) });
+
+    const { role, status } = req.body;
+    if (role === undefined && status === undefined) {
+      return res.status(400).json({ message: "Nothing to update." });
+    }
+
+    const updateFields = { updatedAt: new Date() };
+    if (role !== undefined) updateFields.role = role;
+    if (status !== undefined) updateFields.status = status;
+
+    const result = await usersCollection.updateOne(query, {
+      $set: updateFields,
+    });
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res
+      .status(200)
+      .json({ success: true, message: "User updated successfully" });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// TRAINER APPLICATIONS ROUTES
+app.get("/trainer-applications", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const usersCollection = db.collection("user");
+    const { status } = req.query;
+
+    let query = { "trainerApplication": { $exists: true } };
+    if (status) {
+      query["trainerApplication.status"] = status;
+    }
+
+    const users = await usersCollection.find(query).toArray();
+
+    const applications = users.map(user => ({
+      _id: user.trainerApplication._id || user._id, 
+      userId: user._id,
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      ...user.trainerApplication
+    }));
+
+    res.send(applications);
+  } catch (error) {
+    console.error("Error fetching trainer applications:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.post("/trainer-applications", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const { userId, experience, specialty } = req.body;
+
+    if (!userId || !experience || !specialty) {
+      return res.status(400).json({
+        message: "Missing required application details.",
+      });
+    }
+
+    if (await isUserBlocked(db, userId)) {
+      return res.status(403).json({ message: "Action restricted by Admin." });
+    }
+
+    // Checking embedded vs collection storage logic
+    const usersCollection = db.collection("user");
+    let query = { $or: [{ _id: userId }] };
+    if (ObjectId.isValid(userId)) query.$or.push({ _id: new ObjectId(userId) });
+
+    const newApplication = {
+      status: "Pending",
+      experience,
+      specialty,
+      time: req.body.time || "",
+      feedback: "",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await usersCollection.updateOne(query, {
+      $set: { trainerApplication: newApplication }
+    });
+
+    res.status(201).json({ success: true, message: "Trainer application submitted successfully." });
+  } catch (error) {
+    console.error("Error creating trainer application:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.patch("/trainer-applications/:id", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const usersCollection = db.collection("user");
+    const id = req.params.id;
+
+    let query = { $or: [{ _id: id }] };
+    if (ObjectId.isValid(id)) {
+      query.$or.push({ _id: new ObjectId(id) });
+    }
+
+    const { action, feedback } = req.body;
+
+    const user = await usersCollection.findOne(query);
+    if (!user || !user.trainerApplication) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    if (action === "approve") {
+      await usersCollection.updateOne(query, {
+        $set: {
+          role: "trainer",
+          "trainerApplication.status": "Approved",
+          "trainerApplication.feedback": feedback || "",
+          "trainerApplication.updatedAt": new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Application approved. User promoted to trainer.",
+      });
+    }
+
+    if (action === "reject") {
+      await usersCollection.updateOne(query, {
+        $set: {
+          "trainerApplication.status": "Rejected",
+          "trainerApplication.feedback": feedback || "",
+          "trainerApplication.updatedAt": new Date(),
+          updatedAt: new Date(),
+        },
+      });
+      return res
+        .status(200)
+        .json({ success: true, message: "Application rejected." });
+    }
+
+    return res
+      .status(400)
+      .json({ message: "Invalid action. Must be 'approve' or 'reject'." });
+  } catch (error) {
+    console.error("Error updating trainer application:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.patch("/classes/:id/status", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const classesCollection = db.collection("classes");
+    const id = req.params.id;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid class ID format" });
+    }
+
+    const { status } = req.body;
+    if (!["Approved", "Rejected", "Pending"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status value." });
+    }
+
+    const result = await classesCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status, updatedAt: new Date() } },
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Class ${status.toLowerCase()} successfully`,
+    });
+  } catch (error) {
+    console.error("Error updating class status:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 if (require.main === module) {
   app.listen(port, () => {
     console.log(`Server running on port ${port}`);
