@@ -151,7 +151,12 @@ app.get("/classes", async (req, res) => {
     let query = {};
 
     if (status) query.status = status;
-    if (trainerId) query.trainerId = trainerId;
+    if (trainerId) {
+      query.$or = [
+        { trainerId: trainerId },
+        { "trainer.id": trainerId }
+      ];
+    }
     if (search) query.title = { $regex: search, $options: "i" };
     if (category && category !== "all") {
       const categoriesArray = Array.isArray(category) ? category : [category];
@@ -166,7 +171,6 @@ app.get("/classes", async (req, res) => {
   }
 });
 
-// POST /classes - Trainer creates a new class (always starts as "Pending")
 app.post("/classes", async (req, res) => {
   try {
     const db = await connectDB();
@@ -184,6 +188,8 @@ app.post("/classes", async (req, res) => {
       description,
       trainerId,
       trainerName,
+      trainerAvatar, 
+      totalSlots,
     } = req.body;
 
     if (!title || !trainerId) {
@@ -192,12 +198,23 @@ app.post("/classes", async (req, res) => {
       });
     }
 
-    const newClass = {
+    
+    const numericDuration = Number(String(duration).replace(/[^0-9]/g, "")) || 0;
+
+  const newClass = {
       title,
-      image: image || "",
       category: category || "",
-      difficultyLevel: difficultyLevel || "",
-      duration: duration || "",
+      level: difficultyLevel || "",
+      trainerId: trainerId, 
+      trainer: {
+        name: trainerName || "",
+        avatar: trainerAvatar || ""
+      },
+      duration: numericDuration,
+      price: Number(price) || 0,
+      rating: 0,
+      booked: 0,
+      totalSlots: Number(totalSlots) || 10,
       schedule: Array.isArray(schedule)
         ? schedule
         : String(schedule || "")
@@ -205,14 +222,11 @@ app.post("/classes", async (req, res) => {
             .map((day) => day.trim())
             .filter(Boolean),
       time: time || "",
-      price: Number(price) || 0,
       description: description || "",
-      trainerId,
-      trainer: { id: trainerId, name: trainerName || "" },
+      image: image || "",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       status: "Pending",
-      booked: 0,
-      rating: 0,
-      createdAt: new Date(),
     };
 
     const result = await classesCollection.insertOne(newClass);
@@ -815,19 +829,16 @@ app.get("/community-posts", async (req, res) => {
   }
 });
 
-// POST /community-posts - Trainer publishes a new post to the forum
 app.post("/community-posts", async (req, res) => {
   try {
     const db = await connectDB();
     const postsCollection = db.collection("community_posts");
 
-    const { title, image, description, category, authorId, authorName } =
-      req.body;
+    const { title, image, description, category, authorId, author } = req.body;
 
     if (!title || !description || !authorId) {
       return res.status(400).json({
-        message:
-          "Missing required post details (title, description, or authorId).",
+        message: "Missing required post details (title, description, or authorId).",
       });
     }
 
@@ -837,12 +848,19 @@ app.post("/community-posts", async (req, res) => {
       description,
       category: category || "General",
       authorId,
-      authorName: authorName || "",
+      author: {
+        name: author?.name || "",
+        role: author?.role || "trainer",
+        badge: author?.badge || "",
+        avatar: author?.avatar || "",
+      },
+      tags: [], // Optional: add tags array if your UI supports it
       engagement: {
-        likes: [],
-        dislikes: [],
         likesCount: "0",
         dislikesCount: "0",
+        isPinned: false,
+        likes: [],
+        dislikes: [],
       },
       comments: [],
       createdAt: new Date(),
