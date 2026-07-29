@@ -22,74 +22,282 @@ app.get("/", (req, res) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gymetix API Server</title>
+<title>Gymetix API Server & Route Explorer</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-body{ background: radial-gradient(circle at top,#111827 0%,#030712 50%); }
+body { background: radial-gradient(circle at top, #111827 0%, #030712 60%); }
 </style>
 </head>
-<body class="min-h-screen flex items-center justify-center text-white px-4">
-<div class="w-full max-w-4xl">
-    <div class="bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-3xl p-10 shadow-2xl">
-        <div class="flex items-start justify-between mb-8">
+<body class="min-h-screen text-gray-100 px-4 py-12">
+<div class="w-full max-w-6xl mx-auto space-y-8">
+
+    <!-- Header Section -->
+    <div class="bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-3xl p-8 shadow-2xl">
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div>
-                <h1 class="text-5xl font-bold bg-gradient-to-r from-red-500 to-orange-400 bg-clip-text text-transparent">
+                <h1 class="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-red-500 via-orange-400 to-amber-300 bg-clip-text text-transparent">
                     Gymetix API Server
                 </h1>
-                <p class="mt-4 text-gray-400 max-w-2xl leading-relaxed">
-                    Welcome to the official backend service for the Gymetix
-                    Fitness & Gym Management Platform.
+                <p class="mt-3 text-gray-400 max-w-2xl text-sm md:text-base leading-relaxed">
+                    Official backend ecosystem for Gymetix. Dynamic route navigation with built-in access for public, secure, and admin endpoints.
                 </p>
             </div>
-            <span class="px-4 py-2 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-medium">
-                ● Active
-            </span>
-        </div>
-        <div class="border-t border-gray-800 my-8"></div>
-        <div class="grid md:grid-cols-4 gap-4 mb-8">
-            <div class="bg-gray-800/50 rounded-xl p-4">
-                <p class="text-gray-500 text-xs uppercase">Status</p>
-                <h3 class="text-green-400 font-bold mt-2">Online</h3>
-            </div>
-            <div class="bg-gray-800/50 rounded-xl p-4">
-                <p class="text-gray-500 text-xs uppercase">Database</p>
-                <h3 class="font-bold mt-2">MongoDB Atlas</h3>
-            </div>
-            <div class="bg-gray-800/50 rounded-xl p-4">
-                <p class="text-gray-500 text-xs uppercase">Runtime</p>
-                <h3 class="font-bold mt-2">Node.js</h3>
-            </div>
-            <div class="bg-gray-800/50 rounded-xl p-4">
-                <p class="text-gray-500 text-xs uppercase">Version</p>
-                <h3 class="font-bold mt-2">v1.0.0</h3>
+            <div class="flex items-center gap-3 bg-gray-800/80 px-4 py-2 rounded-full border border-gray-700/50">
+                <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                </span>
+                <span class="text-green-400 text-sm font-semibold tracking-wide">API Active</span>
             </div>
         </div>
-        <h2 class="text-2xl font-bold mb-5">Available Endpoints</h2>
-        <div class="space-y-3">
-            <div class="bg-gray-800/40 hover:bg-gray-800 transition rounded-xl p-4 flex justify-between items-center">
-                <div>
-                    <h3 class="font-mono text-red-400"><a href="/user" target="_blank">/users</a></h3>
-                    <p class="text-sm text-gray-400">Retrieve all registered users</p>
-                </div>
-                <span class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm">GET</span>
+
+        <div class="border-t border-gray-800/80 my-6"></div>
+
+        <!-- System Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-gray-800/40 border border-gray-800 rounded-2xl p-4">
+                <p class="text-gray-500 text-xs font-semibold uppercase tracking-wider">Status</p>
+                <h3 class="text-green-400 font-bold text-lg mt-1">Online</h3>
             </div>
-            <div class="bg-gray-800/40 hover:bg-gray-800 transition rounded-xl p-4 flex justify-between items-center">
-                <div>
-                    <h3 class="font-mono text-red-400"><a href="/classes" target="_blank">/classes</a></h3>
-                    <p class="text-sm text-gray-400">Retrieve all gym classes</p>
-                </div>
-                <span class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm">GET</span>
+            <div class="bg-gray-800/40 border border-gray-800 rounded-2xl p-4">
+                <p class="text-gray-500 text-xs font-semibold uppercase tracking-wider">Database</p>
+                <h3 class="text-gray-200 font-bold text-lg mt-1">MongoDB Atlas</h3>
             </div>
-            <div class="bg-gray-800/40 hover:bg-gray-800 transition rounded-xl p-4 flex justify-between items-center">
-                <div>
-                    <h3 class="font-mono text-red-400"><a href="/bookings" target="_blank">/bookings</a></h3>
-                    <p class="text-sm text-gray-400">Check or retrieve bookings</p>
+            <div class="bg-gray-800/40 border border-gray-800 rounded-2xl p-4">
+                <p class="text-gray-500 text-xs font-semibold uppercase tracking-wider">Authentication</p>
+                <h3 class="text-amber-400 font-bold text-lg mt-1">JWT / Bearer Token</h3>
+            </div>
+            <div class="bg-gray-800/40 border border-gray-800 rounded-2xl p-4">
+                <p class="text-gray-500 text-xs font-semibold uppercase tracking-wider">Version</p>
+                <h3 class="text-gray-200 font-bold text-lg mt-1">v1.0.0</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Routes Grid -->
+    <div class="grid lg:grid-cols-2 gap-8">
+
+        <!-- Public Routes -->
+        <div class="bg-gray-900/60 backdrop-blur-lg border border-gray-800/80 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-gray-100 flex items-center gap-2">
+                        <span class="p-1.5 bg-green-500/10 text-green-400 rounded-lg text-sm">🔓</span> Public Endpoints
+                    </h2>
+                    <span class="text-xs text-gray-400 bg-gray-800 px-2.5 py-1 rounded-md">Open Access</span>
                 </div>
-                <span class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm">GET</span>
+                <p class="text-xs text-gray-400 mb-6">Standard read endpoints accessible directly in browser or client UI.</p>
+
+                <div class="space-y-3">
+                    <div class="bg-gray-800/30 hover:bg-gray-800/60 transition border border-gray-800 rounded-xl p-3.5 flex items-center justify-between">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded">GET</span>
+                                <a href="/classes" target="_blank" class="font-mono text-sm text-gray-200 hover:text-orange-400 transition">/classes</a>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Fetch active gym classes (supports filters)</p>
+                        </div>
+                        <a href="/classes" target="_blank" class="text-xs text-orange-400 hover:underline">View JSON ↗</a>
+                    </div>
+
+                    <div class="bg-gray-800/30 hover:bg-gray-800/60 transition border border-gray-800 rounded-xl p-3.5 flex items-center justify-between">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded">GET</span>
+                                <a href="/featured-classes" target="_blank" class="font-mono text-sm text-gray-200 hover:text-orange-400 transition">/featured-classes</a>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Top-rated and most booked classes</p>
+                        </div>
+                        <a href="/featured-classes" target="_blank" class="text-xs text-orange-400 hover:underline">View JSON ↗</a>
+                    </div>
+
+                    <div class="bg-gray-800/30 hover:bg-gray-800/60 transition border border-gray-800 rounded-xl p-3.5 flex items-center justify-between">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded">GET</span>
+                                <a href="/trainers" target="_blank" class="font-mono text-sm text-gray-200 hover:text-orange-400 transition">/trainers</a>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">List all registered fitness trainers</p>
+                        </div>
+                        <a href="/trainers" target="_blank" class="text-xs text-orange-400 hover:underline">View JSON ↗</a>
+                    </div>
+
+                    <div class="bg-gray-800/30 hover:bg-gray-800/60 transition border border-gray-800 rounded-xl p-3.5 flex items-center justify-between">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded">GET</span>
+                                <a href="/community-posts" target="_blank" class="font-mono text-sm text-gray-200 hover:text-orange-400 transition">/community-posts</a>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Get public forum posts and comments</p>
+                        </div>
+                        <a href="/community-posts" target="_blank" class="text-xs text-orange-400 hover:underline">View JSON ↗</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Protected / Secure Routes -->
+        <div class="bg-gray-900/60 backdrop-blur-lg border border-gray-800/80 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-gray-100 flex items-center gap-2">
+                        <span class="p-1.5 bg-amber-500/10 text-amber-400 rounded-lg text-sm">🔒</span> Secured Endpoints
+                    </h2>
+                    <span class="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-md">Auth / JWT Required</span>
+                </div>
+                <p class="text-xs text-gray-400 mb-6">User/Trainer/Admin routes that require headers or parameters.</p>
+
+                <div class="space-y-3">
+                    <div class="bg-gray-800/30 hover:bg-gray-800/60 transition border border-gray-800 rounded-xl p-3.5 flex items-center justify-between">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded">GET / POST</span>
+                                <span class="font-mono text-sm text-gray-200">/bookings</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">User class bookings and checkout access</p>
+                        </div>
+                        <button onclick="openTester('GET', '/bookings?userId=EXAMPLE_ID')" class="text-xs bg-amber-500/10 border border-amber-500/30 text-amber-300 px-3 py-1 rounded-lg hover:bg-amber-500/20 transition">
+                            Test Route
+                        </button>
+                    </div>
+
+                    <div class="bg-gray-800/30 hover:bg-gray-800/60 transition border border-gray-800 rounded-xl p-3.5 flex items-center justify-between">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">POST / DELETE</span>
+                                <span class="font-mono text-sm text-gray-200">/favorites</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Manage user bookmarked classes</p>
+                        </div>
+                        <button onclick="openTester('GET', '/favorites?userId=EXAMPLE_ID')" class="text-xs bg-amber-500/10 border border-amber-500/30 text-amber-300 px-3 py-1 rounded-lg hover:bg-amber-500/20 transition">
+                            Test Route
+                        </button>
+                    </div>
+
+                    <div class="bg-gray-800/30 hover:bg-gray-800/60 transition border border-gray-800 rounded-xl p-3.5 flex items-center justify-between">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">POST / PATCH</span>
+                                <span class="font-mono text-sm text-gray-200">/trainer-applications</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Trainer promotion application workflow</p>
+                        </div>
+                        <button onclick="openTester('GET', '/trainer-applications')" class="text-xs bg-amber-500/10 border border-amber-500/30 text-amber-300 px-3 py-1 rounded-lg hover:bg-amber-500/20 transition">
+                            Test Route
+                        </button>
+                    </div>
+
+                    <div class="bg-gray-800/30 hover:bg-gray-800/60 transition border border-gray-800 rounded-xl p-3.5 flex items-center justify-between">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded">PATCH / GET</span>
+                                <span class="font-mono text-sm text-gray-200">/user & /user/:id</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Admin manage role status / soft-blocks</p>
+                        </div>
+                        <button onclick="openTester('GET', '/user')" class="text-xs bg-amber-500/10 border border-amber-500/30 text-amber-300 px-3 py-1 rounded-lg hover:bg-amber-500/20 transition">
+                            Test Route
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- API Route Tester Modal -->
+<div id="testerModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-2xl rounded-2xl p-6 shadow-2xl relative space-y-4">
+        <div class="flex justify-between items-center">
+            <h3 class="text-lg font-bold text-gray-100 flex items-center gap-2">
+                ⚙️ Secure Route Request Tester
+            </h3>
+            <button onclick="closeTester()" class="text-gray-400 hover:text-white text-xl font-bold">&times;</button>
+        </div>
+
+        <div class="space-y-3 text-sm">
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 mb-1">Target Endpoint</label>
+                <div class="flex gap-2">
+                    <select id="reqMethod" class="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-xs font-bold focus:outline-none">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PATCH">PATCH</option>
+                        <option value="DELETE">DELETE</option>
+                    </select>
+                    <input type="text" id="reqUrl" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 font-mono text-xs text-amber-300 focus:outline-none" placeholder="/route-path">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 mb-1">Bearer Auth Token (Optional Header)</label>
+                <input type="text" id="reqToken" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 font-mono text-xs text-gray-300 focus:outline-none" placeholder="Bearer eyJhbGciOi...">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 mb-1">JSON Payload Body (For POST/PATCH)</label>
+                <textarea id="reqBody" rows="3" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 font-mono text-xs text-gray-300 focus:outline-none" placeholder='{ "userId": "123", "status": "Approved" }'></textarea>
+            </div>
+
+            <button onclick="executeRequest()" class="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold py-2.5 rounded-xl transition shadow-lg text-xs tracking-wider uppercase">
+                Send Request
+            </button>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 mb-1">Response JSON</label>
+                <pre id="resOutput" class="bg-black/60 border border-gray-800 rounded-xl p-3 font-mono text-xs text-green-400 max-h-48 overflow-y-auto whitespace-pre-wrap">Awaiting execution...</pre>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function openTester(method, url) {
+    document.getElementById('reqMethod').value = method;
+    document.getElementById('reqUrl').value = url;
+    document.getElementById('resOutput').textContent = "Ready to test request.";
+    document.getElementById('testerModal').classList.remove('hidden');
+}
+
+function closeTester() {
+    document.getElementById('testerModal').classList.add('hidden');
+}
+
+async function executeRequest() {
+    const method = document.getElementById('reqMethod').value;
+    const url = document.getElementById('reqUrl').value;
+    const token = document.getElementById('reqToken').value.trim();
+    const bodyText = document.getElementById('reqBody').value.trim();
+    const output = document.getElementById('resOutput');
+
+    output.textContent = "Executing...";
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) {
+        headers['Authorization'] = token.startsWith('Bearer ') ? token : 'Bearer ' + token;
+    }
+
+    const options = { method, headers };
+
+    if ((method === 'POST' || method === 'PATCH') && bodyText) {
+        try {
+            options.body = JSON.stringify(JSON.parse(bodyText));
+        } catch (e) {
+            output.textContent = "Error: Invalid JSON body format.";
+            return;
+        }
+    }
+
+    try {
+        const res = await fetch(url, options);
+        const data = await res.json().catch(() => ({ statusText: res.statusText }));
+        output.textContent = JSON.stringify(data, null, 2);
+    } catch (err) {
+        output.textContent = "Fetch Error: " + err.message;
+    }
+}
+</script>
 </body>
 </html>`);
 });
