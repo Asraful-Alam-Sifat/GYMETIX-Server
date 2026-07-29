@@ -15,7 +15,7 @@ Backend API for **Gymetix**, a full-stack Fitness & Gym Management Platform. Thi
 
 
 
-- **API URL:** [[https://gymetix-server.vercel.app/]]
+- **API URL:** [[https://gymetix-server.vercel.app]]
 
 - **Client Repository:** [https://github.com/Asraful-Alam-Sifat/GYMETIX-Client]
 
